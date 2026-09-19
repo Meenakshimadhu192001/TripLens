@@ -1,0 +1,16 @@
+.venv/
+.venv311/
+__pycache__/
+*.pyc
+database/chroma_server/
+database/chroma_db/
+database/chroma_test/
+database/chroma_test2/
+database/chroma_test3/
+database/chroma_test4/
+database/chroma_test5/
+chroma_temp_test/
+chroma_temp_test2/
+chroma_temp_test3/
+chroma_test/
+chroma_write_test/
