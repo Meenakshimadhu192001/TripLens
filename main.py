@@ -151,6 +151,15 @@ def data_quality_report():
     return {"packages": total, "missing_core_fields": missing, "relation_gaps": relation_gaps}
 
 
+@app.get("/api/destinations")
+def get_destinations():
+    """Return all destination names dynamically discovered from the database."""
+    from scripts.preference_extraction import load_db_destinations_and_origins
+    dest_dict, _ = load_db_destinations_and_origins()
+    unique_dests = sorted(set(dest_dict.values()))
+    return {"destinations": unique_dests}
+
+
 @app.post("/api/packages", status_code=201)
 def create_package(payload: PackageInput):
     """Create one complete package and all four checklist sections atomically."""
