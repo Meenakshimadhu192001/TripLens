@@ -42,45 +42,87 @@ def build_semantic_query(prefs: dict, original_prompt: str) -> str:
     return original_prompt
 
 
-def get_candidates(prefs: dict, original_prompt: str, top_k: int = RETRIEVAL_TOP_K):
+def get_candidates(
+    prefs: dict,
+    original_prompt: str,
+    top_k: int = RETRIEVAL_TOP_K
+):
     query_text = build_semantic_query(prefs, original_prompt)
-    # Default to the local, deterministic path. Enable semantic retrieval only
-    # where the model is intentionally provisioned (e.g. deployment/CI).
+
+    # Lexical fallback
     if os.getenv("TRIPLENS_USE_SEMANTIC_RETRIEVAL") != "1":
         return _get_lexical_candidates(query_text, top_k)
+
+    # Semantic retrieval
     try:
-        results = _get_collection().query(query_texts=[query_text], n_results=top_k)
+        collection = _get_collection()
+
+        results = collection.query(
+            query_texts=[query_text],
+            n_results=min(top_k * 20, collection.count())
+        )
+
     except Exception:
-        # Deterministic offline fallback: rank real package rows by overlap with
-        # the user's words. This does not create or substitute package data.
         return _get_lexical_candidates(query_text, top_k)
 
     ids = results["ids"][0]
     distances = results["distances"][0]
-    # Chroma returns cosine distance; convert to a 0-1 similarity score
+
     similarity_by_id = {
-        pkg_id: max(0.0, 1.0 - dist) for pkg_id, dist in zip(ids, distances)
+        pkg_id: max(0.0, 1.0 - dist)
+        for pkg_id, dist in zip(ids, distances)
     }
 
     if not ids:
         return []
 
+    # Load full package data
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+
     placeholders = ",".join("?" for _ in ids)
+
     rows = conn.execute(
-        f"SELECT * FROM packages_enriched WHERE package_id IN ({placeholders})",
-        ids,
+        f"""
+        SELECT *
+        FROM packages_enriched
+        WHERE package_id IN ({placeholders})
+        """,
+        ids
     ).fetchall()
+
     conn.close()
 
     candidates = []
+
+    # Only budget is a HARD constraint for now
+    budget_max = prefs.get("budget_max")
+
     for row in rows:
         pkg = dict(row)
-        pkg["semantic_similarity"] = similarity_by_id.get(pkg["package_id"], 0.0)
+
+        if budget_max is not None:
+            price = pkg.get("price")
+
+            try:
+                if price is None or float(price) > float(budget_max):
+                    continue
+            except (TypeError, ValueError):
+                continue
+
+        pkg["semantic_similarity"] = similarity_by_id.get(
+            pkg["package_id"],
+            0.0
+        )
+
         candidates.append(pkg)
 
-    return candidates
+    candidates.sort(
+        key=lambda x: x["semantic_similarity"],
+        reverse=True
+    )
+
+    return candidates[:top_k]
 
 
 def _get_lexical_candidates(query_text: str, top_k: int) -> list:
