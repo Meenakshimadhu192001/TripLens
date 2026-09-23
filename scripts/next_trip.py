@@ -26,7 +26,14 @@ def get_next_trip_suggestions(user_id: str = "U001", mode: str = "preferences", 
     history = get_trip_history(user_id)
 
     # Cold Start Check
-    if not profile or not profile["personalization_enabled"] or not history:
+    has_learned_preferences = profile and any([
+        profile.get("preferred_themes"),
+        profile.get("preferred_destinations"),
+        profile.get("preferred_budget_range", {}).get("min") is not None,
+        profile.get("preferred_duration_range", {}).get("min_days") is not None,
+        profile.get("preferred_pace"),
+    ])
+    if not profile or not profile["personalization_enabled"] or (not history and not has_learned_preferences):
         # Fallback to cold-start general recommendations
         return _get_cold_start_suggestions(top_k)
 

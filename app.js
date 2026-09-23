@@ -156,6 +156,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return data.results || [];
   }
 
+  async function learnPrompt(apiPrefs, promptText) {
+    const res = await fetch(`${API_BASE_URL}/api/learn-prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...apiPrefs, prompt: promptText, user_id: "U001" })
+    });
+    if (!res.ok) throw new Error(`learn-prompt failed: ${res.status}`);
+  }
+
   function mapApiPrefsToUiPrefs(apiPrefs) {
     return {
       minBudget: apiPrefs.budget_min ?? 8000,
@@ -1237,6 +1246,7 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Searching real packages...");
       try {
         const apiPrefs = mapUiPrefsToApiPrefs(state.preferences);
+        await learnPrompt(apiPrefs, state.userPrompt);
         const results = await fetchSearch(apiPrefs, state.userPrompt);
         state.searchResults = results.map(mapApiPackageToUiPkg);
       } catch (err) {
@@ -1311,7 +1321,7 @@ document.addEventListener("DOMContentLoaded", () => {
       nextTripCardsGrid.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-subtle); padding: 1.5rem; text-align: center;">Analyzing travel history and generating suggestions...</div>`;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/next-trip-suggestions`, {
+        const res = await fetch(`${API_BASE_URL}/api/next-trip-suggestions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: "U001", mode: mode, top_k: 4 })

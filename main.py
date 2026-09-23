@@ -34,6 +34,18 @@ class SearchRequest(BaseModel):
     top_k: int = 10
 
 
+class PromptLearningRequest(BaseModel):
+    user_id: str = "U001"
+    prompt: str
+    destination_region: str | None = None
+    start_location: str | None = None
+    duration_days: int | None = None
+    budget_min: int | None = None
+    budget_max: int | None = None
+    pace: str | None = None
+    interests: list[str] | None = None
+
+
 class PreferenceOverride(BaseModel):
     prompt: str
     destination_region: str | None = None
@@ -226,6 +238,14 @@ def search_endpoint(req: PreferenceOverride):
 
     ranked = rank_candidates(candidates, prefs)
     return {"results": ranked[: req.top_k]}
+
+
+@app.post("/api/learn-prompt")
+def learn_prompt_endpoint(req: PromptLearningRequest):
+    """Store explicit preferences from a prompt for future recommendations."""
+    from scripts.preference_learning import learn_from_prompt
+    profile = learn_from_prompt(req.user_id, req.dict())
+    return {"status": "learned", "user_id": req.user_id, "profile": profile}
 
 
 @app.get("/package/{package_id}")

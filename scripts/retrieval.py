@@ -124,45 +124,52 @@ def _find_destination_packages(
 
     destination = destination.strip().lower()
 
+    # UI labels can describe a region using the places users actually mean.
+    # Search each meaningful place token so "Himachal (Shimla/Manali)" works
+    # the same way as a direct "Shimla" or "Manali" request.
+    destination_terms = [
+        term.strip()
+        for term in re.split(r"[,()/]+", destination)
+        if len(term.strip()) >= 3
+    ]
+    if not destination_terms:
+        destination_terms = [destination]
+
     if not destination:
         return []
 
-    pattern = f"%{destination}%"
-
-    query = f"""
-        SELECT DISTINCT p.*
-        FROM {table_name} p
-        WHERE
+    clauses = []
+    params = []
+    for term in destination_terms:
+        pattern = f"%{term}%"
+        clauses.append("""
             LOWER(COALESCE(p.destinations, '')) LIKE ?
-
             OR LOWER(COALESCE(p.package_name, '')) LIKE ?
-
             OR p.package_id IN (
                 SELECT a.package_id
                 FROM accommodation a
                 WHERE LOWER(COALESCE(a.destination, '')) LIKE ?
             )
-
             OR p.package_id IN (
                 SELECT i.package_id
                 FROM itinerary_days i
-                WHERE
-                    LOWER(COALESCE(i.stops, '')) LIKE ?
-                    OR LOWER(COALESCE(i.activities, '')) LIKE ?
+                WHERE LOWER(COALESCE(i.stops, '')) LIKE ?
+                   OR LOWER(COALESCE(i.activities, '')) LIKE ?
             )
+        """)
+        params.extend([pattern] * 5)
+
+    query = f"""
+        SELECT DISTINCT p.*
+        FROM {table_name} p
+        WHERE ({' OR '.join(clauses)})
     """
 
     cur = conn.cursor()
 
     return cur.execute(
         query,
-        (
-            pattern,
-            pattern,
-            pattern,
-            pattern,
-            pattern,
-        ),
+        params,
     ).fetchall()
 
 
