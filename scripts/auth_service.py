@@ -1,8 +1,13 @@
 import os
 import sqlite3
 import hashlib
+import base64
+import hmac
+import json
+import time
 
 DB_PATH = os.path.join("database", "triplens.db")
+SESSION_SECRET = os.getenv("TRIPLENS_SESSION_SECRET", "triplens-local-session-secret").encode("utf-8")
 
 def init_user_table():
     conn = sqlite3.connect(DB_PATH)
@@ -55,6 +60,43 @@ def verify_user(email, password):
     if user:
         return {"authenticated": True, "id": user[0], "email": user[1], "role": user[2], "agency_name": user[3]}
     return {"authenticated": False, "message": "Invalid credentials"}
+
+def get_user_by_email(email):
+    init_user_table()
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT id, email, role, agency_name FROM users WHERE email = ?",
+        (email.strip().lower(),),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def create_session_token(user):
+    payload = {
+        "id": user["id"],
+        "email": user["email"],
+        "role": user["role"],
+        "agency_name": user.get("agency_name"),
+        "exp": int(time.time()) + 8 * 60 * 60,
+    }
+    encoded = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
+    signature = hmac.new(SESSION_SECRET, encoded.encode(), hashlib.sha256).hexdigest()
+    return f"{encoded}.{signature}"
+
+def verify_session_token(token):
+    try:
+        encoded, signature = token.split(".", 1)
+        expected = hmac.new(SESSION_SECRET, encoded.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            return None
+        padding = "=" * (-len(encoded) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(encoded + padding))
+        if payload.get("exp", 0) < time.time():
+            return None
+        return payload
+    except (ValueError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
 
 if __name__ == "__main__":
     init_user_table()

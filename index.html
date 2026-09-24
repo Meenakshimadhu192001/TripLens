@@ -91,12 +91,12 @@
           <form id="form-screen-auth">
             <div style="text-align: left; margin-bottom: 1rem;">
               <label class="form-label" style="display: block; font-size: 0.8rem; margin-bottom: 0.3rem;">Email Address:</label>
-              <input type="email" class="form-input" id="screen-auth-email" placeholder="traveler@example.com" value="traveler@example.com" required style="width: 100%; box-sizing: border-box;">
+              <input type="email" class="form-input" id="screen-auth-email" placeholder="traveler@example.com" required style="width: 100%; box-sizing: border-box;">
             </div>
             
             <div style="text-align: left; margin-bottom: 1.5rem;">
               <label class="form-label" style="display: block; font-size: 0.8rem; margin-bottom: 0.3rem;">Password:</label>
-              <input type="password" class="form-input" id="screen-auth-password" placeholder="••••••••" value="pass123" required style="width: 100%; box-sizing: border-box;">
+              <input type="password" class="form-input" id="screen-auth-password" placeholder="••••••••" required style="width: 100%; box-sizing: border-box;">
             </div>
 
             <button type="submit" class="btn-primary-cta" id="btn-screen-auth-submit" style="width: 100%; font-size: 0.95rem; padding: 0.75rem; border-radius: var(--radius-md);">
@@ -104,6 +104,9 @@
               <span class="cta-arrow">→</span>
             </button>
           </form>
+
+          <div class="google-sign-in-divider">or</div>
+          <button type="button" class="google-sign-in-button" id="google-user-sign-in">Continue with Google</button>
 
           <div style="margin-top: 1.25rem; font-size: 0.82rem; color: var(--text-subtle);">
             <span id="screen-auth-toggle-msg">Don't have an account?</span>
@@ -960,6 +963,7 @@
 
   <!-- JS Dependencies -->
   <script src="/data.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="/app.js"></script>
 </body>
 

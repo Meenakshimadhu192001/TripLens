@@ -156,6 +156,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return data.results || [];
   }
 
+  async function learnPrompt(apiPrefs, promptText) {
+    const res = await fetch(`${API_BASE_URL}/api/learn-prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...apiPrefs, prompt: promptText, user_id: "U001" })
+    });
+    if (!res.ok) throw new Error(`learn-prompt failed: ${res.status}`);
+  }
+
   function mapApiPrefsToUiPrefs(apiPrefs) {
     return {
       minBudget: apiPrefs.budget_min ?? 8000,
@@ -164,6 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
       from: apiPrefs.start_location || state.preferences.from,
       travelers: apiPrefs.travelers ?? state.preferences.travelers,
       destination: apiPrefs.destination_region || state.preferences.destination,
+      destinationKnown: apiPrefs.destination_known !== false,
       pace: apiPrefs.pace || state.preferences.pace,
       interests: apiPrefs.interests || []
     };
@@ -447,8 +457,11 @@ document.addEventListener("DOMContentLoaded", () => {
    */
   function updatePreferencesDisplay() {
     const pref = state.preferences;
+    const destinationMessage = pref.destinationKnown !== false
+      ? `"${pref.duration}-day ${pref.pace.toLowerCase()} ${pref.destination} trip from ${pref.from} for ${pref.travelers} traveler${pref.travelers > 1 ? "s" : ""} between ₹${pref.minBudget.toLocaleString("en-IN")} and ₹${pref.maxBudget.toLocaleString("en-IN")} budget."`
+      : `We could not find <strong>${pref.destination}</strong> in our available destinations. No unrelated packages will be shown.`;
     elements.aiExtractionSummary.innerHTML = `
-      <strong>TripLens AI Extraction:</strong> "${pref.duration}-day ${pref.pace.toLowerCase()} ${pref.destination} trip from ${pref.from} for ${pref.travelers} traveler${pref.travelers > 1 ? "s" : ""} between ₹${pref.minBudget.toLocaleString("en-IN")} and ₹${pref.maxBudget.toLocaleString("en-IN")} budget."
+      <strong>TripLens AI Extraction:</strong> ${destinationMessage}
     `;
     elements.dispPrefBudget.textContent = `₹${pref.minBudget.toLocaleString("en-IN")} – ₹${pref.maxBudget.toLocaleString("en-IN")}`;
     elements.dispPrefDuration.textContent = `${pref.duration} days`;
@@ -1237,6 +1250,7 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Searching real packages...");
       try {
         const apiPrefs = mapUiPrefsToApiPrefs(state.preferences);
+        await learnPrompt(apiPrefs, state.userPrompt);
         const results = await fetchSearch(apiPrefs, state.userPrompt);
         state.searchResults = results.map(mapApiPackageToUiPkg);
       } catch (err) {
@@ -1311,7 +1325,7 @@ document.addEventListener("DOMContentLoaded", () => {
       nextTripCardsGrid.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-subtle); padding: 1.5rem; text-align: center;">Analyzing travel history and generating suggestions...</div>`;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/next-trip-suggestions`, {
+        const res = await fetch(`${API_BASE_URL}/api/next-trip-suggestions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: "U001", mode: mode, top_k: 4 })
@@ -1668,6 +1682,33 @@ document.addEventListener("DOMContentLoaded", () => {
           loadNextTripSuggestions(currentNextTripMode);
         } catch (err) {
           showToast(err.message, "⚠");
+        }
+      });
+    }
+
+    const googleUserSignIn = document.getElementById("google-user-sign-in");
+    if (googleUserSignIn) {
+      googleUserSignIn.addEventListener("click", async () => {
+        try {
+          const config = await fetch("/api/auth/google-config").then((res) => res.json());
+          if (!config.enabled || !window.google) throw new Error("Google sign-in is not configured yet.");
+          google.accounts.id.initialize({
+            client_id: config.client_id,
+            callback: async (response) => {
+              const res = await fetch("/api/auth/google", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ credential: response.credential, role: "traveler" }) });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.detail || "Google sign-in failed.");
+              currentUser = { email: data.email, user_id: data.id || "U001", session_token: data.session_token };
+              localStorage.setItem("triplens_user", JSON.stringify(currentUser));
+              updateAuthUi();
+              navigateTo("home");
+              loadUserProfile();
+              loadNextTripSuggestions(currentNextTripMode);
+            }
+          });
+          google.accounts.id.prompt();
+        } catch (error) {
+          showToast(error.message, "⚠");
         }
       });
     }

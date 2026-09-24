@@ -8,7 +8,18 @@
 <body><main class="main-content" style="max-width:1000px;margin:2rem auto;padding:0 1rem">
   <a href="/" class="btn-secondary">← Back to TripLens</a>
   <div class="screen-title-group"><h1 class="screen-title">Package manager</h1><p class="screen-subtitle">Every field below is required to keep package data complete and transparent.</p></div>
-  <div id="quality" class="parsed-callout-card">Loading data-quality report…</div>
+  <section id="packager-login" class="pref-card manager-login-card" style="margin-top:1rem">
+    <h2 class="screen-title" style="font-size:1.25rem">Packager sign in</h2>
+    <form id="packager-login-form" class="manager-login-form">
+      <div class="form-group"><label class="form-label" for="packager-email">Email</label><input class="form-select" id="packager-email" type="email" autocomplete="username" required></div>
+      <div class="form-group"><label class="form-label" for="packager-password">Password</label><input class="form-select" id="packager-password" type="password" autocomplete="current-password" required></div>
+      <p id="login-message" aria-live="polite"></p><button class="btn-primary-cta" type="submit"><span>Sign in</span><span>→</span></button>
+      <div class="google-sign-in-divider">or</div>
+      <button type="button" class="google-sign-in-button" id="google-packager-sign-in">Continue with Google</button>
+    </form>
+  </section>
+  <section id="manager-shell" hidden>
+    <div class="manager-toolbar"><div id="logged-in-as"></div><button class="btn-secondary" type="button" id="packager-logout">Sign out</button></div>
   <form id="package-form" class="pref-card" style="margin-top:1rem">
     <h2 class="screen-title" style="font-size:1.25rem">1. Core package details</h2>
     <div class="pref-grid" id="core-fields"></div>
@@ -21,4 +32,5 @@
     <label class="form-label" style="margin-top:1rem">Exclusions — one item per line</label><textarea class="ai-prompt-textarea" id="exclusions" required rows="4" placeholder="Personal expenses&#10;Safari permits"></textarea>
     <p id="form-message" aria-live="polite" style="margin-top:1rem"></p><button class="btn-primary-cta" type="submit"><span>Save complete package</span><span>→</span></button>
   </form>
-</main><script src="/manage.js"></script></body></html>
+  </section>
+</main><script src="https://accounts.google.com/gsi/client" async defer></script><script src="/manage.js"></script></body></html>

@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sqlite3
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,6 +32,18 @@ app.add_middleware(
 class SearchRequest(BaseModel):
     prompt: str
     top_k: int = 10
+
+
+class PromptLearningRequest(BaseModel):
+    user_id: str = "U001"
+    prompt: str
+    destination_region: str | None = None
+    start_location: str | None = None
+    duration_days: int | None = None
+    budget_min: int | None = None
+    budget_max: int | None = None
+    pace: str | None = None
+    interests: list[str] | None = None
 
 
 class PreferenceOverride(BaseModel):
@@ -151,9 +163,25 @@ def data_quality_report():
     return {"packages": total, "missing_core_fields": missing, "relation_gaps": relation_gaps}
 
 
+@app.get("/api/destinations")
+def get_destinations():
+    """Return all destination names dynamically discovered from the database."""
+    from scripts.preference_extraction import load_db_destinations_and_origins
+    dest_dict, _ = load_db_destinations_and_origins()
+    unique_dests = sorted(set(dest_dict.values()))
+    return {"destinations": unique_dests}
+
+
 @app.post("/api/packages", status_code=201)
-def create_package(payload: PackageInput):
+def create_package(payload: PackageInput, authorization: str | None = Header(default=None)):
     """Create one complete package and all four checklist sections atomically."""
+    from scripts.auth_service import verify_session_token
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Packager login required.")
+    session = verify_session_token(authorization[7:].strip())
+    if not session or session.get("role") not in {"packager", "admin"}:
+        raise HTTPException(status_code=403, detail="Only packagers or admins can save packages.")
+
     package_id = payload.package_id.strip().upper()
     if not re.fullmatch(r"[A-Z0-9_-]{3,40}", package_id):
         raise HTTPException(status_code=422, detail="Package ID must contain only letters, numbers, _ or -.")
@@ -219,6 +247,14 @@ def search_endpoint(req: PreferenceOverride):
     return {"results": ranked[: req.top_k]}
 
 
+@app.post("/api/learn-prompt")
+def learn_prompt_endpoint(req: PromptLearningRequest):
+    """Store explicit preferences from a prompt for future recommendations."""
+    from scripts.preference_learning import learn_from_prompt
+    profile = learn_from_prompt(req.user_id, req.dict())
+    return {"status": "learned", "user_id": req.user_id, "profile": profile}
+
+
 @app.get("/package/{package_id}")
 def get_package_detail(package_id: str):
     """Full detail for one package: overview, itinerary, inclusions/exclusions,
@@ -272,6 +308,10 @@ class LoginInput(BaseModel):
     email: str
     password: str
 
+class GoogleLoginInput(BaseModel):
+    credential: str
+    role: str = "traveler"
+
 class RegisterInput(BaseModel):
     email: str
     password: str
@@ -288,11 +328,65 @@ def register_user(payload: RegisterInput):
 
 @app.post("/api/auth/login")
 def login_user(payload: LoginInput):
-    from scripts.auth_service import verify_user
+    from scripts.auth_service import create_session_token, verify_user
     res = verify_user(payload.email, payload.password)
     if not res.get("authenticated"):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    res["session_token"] = create_session_token(res)
     return res
+
+@app.get("/api/auth/google-config")
+def google_auth_config():
+    import os
+    return {"client_id": os.getenv("GOOGLE_CLIENT_ID"), "enabled": bool(os.getenv("GOOGLE_CLIENT_ID"))}
+
+@app.post("/api/auth/google")
+def google_login(payload: GoogleLoginInput):
+    import os
+    import httpx
+    from scripts.auth_service import create_session_token, create_user, verify_user
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured yet.")
+    if payload.role not in {"traveler", "packager"}:
+        raise HTTPException(status_code=400, detail="Invalid Google sign-in role.")
+
+    try:
+        token_response = httpx.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": payload.credential},
+            timeout=5,
+        )
+        token_response.raise_for_status()
+        claims = token_response.json()
+    except (httpx.HTTPError, ValueError) as error:
+        raise HTTPException(status_code=401, detail="Google identity could not be verified.") from error
+
+    if claims.get("aud") != client_id or claims.get("email_verified") != "true":
+        raise HTTPException(status_code=401, detail="Google identity could not be verified.")
+
+    email = claims.get("email", "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="Google did not provide an email address.")
+
+    from scripts.auth_service import get_user_by_email
+    existing = get_user_by_email(email)
+    if payload.role == "packager":
+        if not existing or existing["role"] not in {"packager", "admin"}:
+            raise HTTPException(status_code=403, detail="This Google account is not registered as a packager.")
+        user = existing
+    elif existing:
+        user = existing
+    else:
+        created = create_user(email, f"google:{claims.get('sub')}", role="traveler")
+        user = get_user_by_email(email) if created.get("status") == "success" else None
+
+    if not user:
+        raise HTTPException(status_code=500, detail="Could not create the Google account.")
+    user["session_token"] = create_session_token(user)
+    user["authenticated"] = True
+    return user
 
 class ProfileSettingsInput(BaseModel):
     user_id: str = "U001"

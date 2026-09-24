@@ -8,7 +8,7 @@ c = conn.cursor()
 tables = [t[0] for t in c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()]
 
 client = chromadb.PersistentClient(path='database/chroma_db')
-col = client.get_or_create_collection('travel_packages')
+col = client.get_collection('travel_packages')
 
 print('=' * 60)
 print('TRIPLENS MEMBER 1 - ARCHITECTURE HEALTH REPORT')
