@@ -2313,3 +2313,33 @@
   align-items: center;
   gap: 0.4rem;
 }
+
+/* Package manager controls need a clear field boundary on the light surface. */
+.manager-login-card { max-width: 34rem; margin-left: auto; margin-right: auto; }
+.manager-login-form { display: grid; gap: 1rem; max-width: 28rem; }
+.manager-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0; }
+.manager-toolbar #logged-in-as { color: var(--text-muted); font-size: 0.9rem; }
+.google-sign-in-divider { margin: 1rem 0 0.75rem; color: var(--text-subtle); font-size: 0.8rem; text-align: center; }
+.google-sign-in-button { width: 100%; min-height: 2.75rem; border: 1px solid #B8C5C0; border-radius: var(--radius-sm); background: #FFFFFF; color: var(--text-main); font-weight: 700; }
+.google-sign-in-button:hover { border-color: var(--primary); background: var(--primary-light); }
+#package-form input.form-select,
+#package-form textarea.ai-prompt-textarea,
+#package-form select.form-select,
+#packager-login-form input.form-select {
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid #B8C5C0;
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.8rem;
+  min-height: 2.75rem;
+}
+#package-form input.form-select:focus,
+#package-form textarea.ai-prompt-textarea:focus,
+#package-form select.form-select:focus,
+#packager-login-form input.form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+#package-form fieldset.pref-card { border: 1px solid var(--primary-border); }

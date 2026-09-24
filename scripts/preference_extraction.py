@@ -15,50 +15,53 @@ from functools import lru_cache
 
 THEME_KEYWORDS = {
     "nature": [
-        "nature", "greenery", "waterfalls", "hills",
-        "scenic", "forest", "wildlife"
+        "nature", "natural", "greenery", "waterfall", "waterfalls",
+        "hills", "scenic", "scenery", "landscape", "landscapes",
+        "forest", "forests", "wildlife", "outdoors"
     ],
     "beach": [
-        "beach", "coast", "island", "sea", "shores"
+        "beach", "beaches", "coast", "coastal", "island", "islands",
+        "sea", "shore", "shores"
     ],
     "backwaters": [
-        "backwater", "houseboat", "lagoon"
+        "backwater", "backwaters", "houseboat", "houseboats", "lagoon"
     ],
     "adventure": [
-        "adventure", "trek", "trekking", "rafting",
-        "paragliding", "camping"
+        "adventure", "adventurous", "trek", "treks", "trekking",
+        "rafting", "paragliding", "camping", "camp"
     ],
     "heritage": [
-        "heritage", "temple", "fort", "culture",
-        "historic", "palace"
+        "heritage", "temple", "temples", "fort", "forts", "culture",
+        "cultural", "historic", "historical", "palace", "palaces"
     ],
     "pilgrimage": [
         "pilgrimage", "spiritual", "temple visit", "shrine"
     ],
     "hill-station": [
-        "hill station", "mountains", "snow",
-        "valley", "snowfall"
+        "hill station", "hill-stations", "mountain", "mountains", "snow",
+        "valley", "valleys", "snowfall", "snowy"
     ],
     "honeymoon/romance": [
-        "honeymoon", "romantic", "couple", "anniversary"
+        "honeymoon", "romantic", "romance", "couple", "anniversary"
     ],
     "family": [
-        "family", "kids", "children", "parents"
+        "family", "families", "kids", "children", "parents", "child-friendly"
     ],
     "sightseeing": [
-        "sightseeing", "points", "viewpoint", "tourist spots"
+        "sightseeing", "sight-seeing", "points", "viewpoint", "viewpoints",
+        "tourist spots", "attractions", "landmarks"
     ],
 }
 
 
 PACE_KEYWORDS = {
     "Relaxed": [
-        "relaxed", "leisure", "slow",
-        "peaceful", "unrushed", "easy"
+        "relaxed", "relaxing", "leisure", "slow", "slow-paced",
+        "slow paced", "peaceful", "unrushed", "easy", "laid-back", "laid back"
     ],
     "Active": [
-        "active", "packed", "fast-paced",
-        "full circuit", "express", "intensive"
+        "active", "packed", "fast-paced", "fast paced", "busy",
+        "full circuit", "express", "intensive", "hectic"
     ],
 }
 
@@ -481,6 +484,17 @@ def _find_destination_in_text(
             ):
                 return dest_dict[destination]
 
+        # Preserve an explicit but unknown destination so callers can
+        # explain that it is unavailable instead of searching all packages.
+        unknown_destination = re.sub(
+            r"^(?:a|an|the)\s+",
+            "",
+            candidate_text,
+            flags=re.IGNORECASE,
+        ).strip()
+        if unknown_destination:
+            return unknown_destination.title()
+
     # ---------------------------------------
     # 2. "<destination> trip/tour/package"
     # ---------------------------------------
@@ -516,6 +530,17 @@ def _find_destination_in_text(
             ):
                 return dest_dict[destination]
 
+        unknown_trip_match = re.search(
+            r"\b(?:plan|book|find|need|want)\s+"
+            r"(?:a|an|the)?\s*"
+            r"([a-z][a-z\s]{1,40}?)\s+"
+            r"(?:trip|tour|package|holiday|getaway|circuit|escape|escapes)\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if unknown_trip_match:
+            return unknown_trip_match.group(1).strip().title()
+
     # ---------------------------------------
     # 3. Full database destination scan
     # ---------------------------------------
@@ -546,6 +571,7 @@ def extract_preferences(
 
     prefs = {
         "destination_region": None,
+        "destination_known": True,
         "start_location": None,
         "duration_days": None,
         "budget_min": None,
@@ -885,6 +911,15 @@ def extract_preferences(
             prefs["start_location"]
         )
     )
+    if prefs["destination_region"]:
+        known_destinations = {
+            value.lower()
+            for value in dest_dict.values()
+        }
+        prefs["destination_known"] = (
+            prefs["destination_region"].lower()
+            in known_destinations
+        )
 
     # =========================================================
     # 6. PACE
