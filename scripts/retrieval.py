@@ -83,27 +83,12 @@ def build_semantic_query(
 
 def _get_table_info(conn):
     """
-    Determine whether packages_enriched exists.
-    If not, use the original packages table.
+    Use the canonical packages table for live retrieval.
+
+    packages_enriched is a generated snapshot and can lag behind packages
+    after a manager submission, which would hide newly created packages.
     """
-    cur = conn.cursor()
-
-    has_enriched = cur.execute(
-        """
-        SELECT name
-        FROM sqlite_master
-        WHERE type='table'
-        AND name='packages_enriched'
-        """
-    ).fetchone()
-
-    table_name = (
-        "packages_enriched"
-        if has_enriched
-        else "packages"
-    )
-
-    return has_enriched, table_name
+    return False, "packages"
 
 
 def _find_destination_packages(

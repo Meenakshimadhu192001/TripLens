@@ -187,6 +187,10 @@ def create_package(payload: PackageInput, authorization: str | None = Header(def
         raise HTTPException(status_code=422, detail="Package ID must contain only letters, numbers, _ or -.")
     if payload.duration_days < 1 or payload.duration_nights < 0 or payload.price < 0 or payload.list_price < 0:
         raise HTTPException(status_code=422, detail="Duration and prices must be valid non-negative values.")
+    if payload.duration_nights != max(payload.duration_days - 1, 0):
+        raise HTTPException(status_code=422, detail=f"Duration nights must equal duration days - 1 (for {payload.duration_days} days, nights must be {max(payload.duration_days - 1, 0)}).")
+    if payload.list_price < payload.price:
+        raise HTTPException(status_code=422, detail="List price must be greater than or equal to price.")
     if len(payload.itinerary) != payload.duration_days:
         raise HTTPException(status_code=422, detail="Add exactly one itinerary row for every duration day.")
     if sorted(day.day_number for day in payload.itinerary) != list(range(1, payload.duration_days + 1)):
@@ -213,7 +217,51 @@ def create_package(payload: PackageInput, authorization: str | None = Header(def
         raise HTTPException(status_code=409, detail=f"Package could not be saved: {error}") from error
     finally:
         conn.close()
-    return {"package_id": package_id, "message": "Complete package saved."}
+
+    # Keep semantic search in sync with packages created from the manager.
+    try:
+        from scripts.chroma_sync import sync_package_to_chroma
+        day_summary = "; ".join(
+            f"Day {day.day_number} ({day.stops}): {day.activities}"
+            for day in payload.itinerary
+        )
+        accommodation_summary = ", ".join(
+            f"{stay.destination} ({stay.accommodation_category})"
+            for stay in payload.accommodation
+        )
+        sync_package_to_chroma({
+            "package_id": package_id,
+            "package_name": payload.package_name,
+            "start_location": payload.start_location,
+            "duration_days": payload.duration_days,
+            "price": payload.price,
+            "total_transit_hours": sum(day.transit_hours for day in payload.itinerary),
+            "canonical_text": (
+                f"Package: {payload.package_name} by {payload.agency_name}. "
+                f"Start location: {payload.start_location}. Destinations: {payload.destinations}. "
+                f"Duration: {payload.duration_days} days. Pace: {payload.itinerary_pace}. "
+                f"Price: Rs {payload.price}. Daily itinerary: {day_summary}. "
+                f"Accommodations: {accommodation_summary}."
+            ),
+        })
+    except Exception as error:
+        # Database persistence has already succeeded; search sync can be retried later.
+        print(f"[CHROMA] Package {package_id} saved but index sync failed: {error}")
+
+    excel_workbooks = []
+    try:
+        from scripts.excel_sync import sync_package_to_excel
+        excel_workbooks = sync_package_to_excel(payload)
+    except Exception as error:
+        # Keep the database save successful if a workbook is locked or unavailable.
+        print(f"[EXCEL] Package {package_id} saved but workbook sync failed: {error}")
+
+    return {
+        "package_id": package_id,
+        "message": "Complete package saved.",
+        "excel_updated": bool(excel_workbooks),
+        "excel_workbooks": excel_workbooks,
+    }
 
 
 @app.post("/extract-preferences")

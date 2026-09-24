@@ -2314,14 +2314,96 @@
   gap: 0.4rem;
 }
 
-/* Package manager controls need a clear field boundary on the light surface. */
-.manager-login-card { max-width: 34rem; margin-left: auto; margin-right: auto; }
-.manager-login-form { display: grid; gap: 1rem; max-width: 28rem; }
-.manager-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0; }
-.manager-toolbar #logged-in-as { color: var(--text-muted); font-size: 0.9rem; }
-.google-sign-in-divider { margin: 1rem 0 0.75rem; color: var(--text-subtle); font-size: 0.8rem; text-align: center; }
-.google-sign-in-button { width: 100%; min-height: 2.75rem; border: 1px solid #B8C5C0; border-radius: var(--radius-sm); background: #FFFFFF; color: var(--text-main); font-weight: 700; }
-.google-sign-in-button:hover { border-color: var(--primary); background: var(--primary-light); }
+.manager-page {
+  align-items: stretch;
+}
+
+.manager-shell {
+  width: 100%;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.manager-panel {
+  background: linear-gradient(180deg, #ffffff 0%, #f6faf7 100%);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.manager-login-card {
+  max-width: 34rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.5rem;
+}
+
+.manager-login-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.manager-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 0 0;
+  padding: 0.9rem 1rem;
+}
+
+.manager-toolbar #logged-in-as {
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.manager-form-panel {
+  padding: 1.5rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbf9 100%);
+}
+
+.manager-section-block {
+  background: #f5faf7;
+  border: 1px solid #dfece7;
+  border-radius: var(--radius-lg);
+  padding: 1rem 1rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.manager-section-title {
+  font-size: 1.15rem !important;
+  margin-bottom: 1rem;
+  color: var(--text-main);
+}
+
+#package-form {
+  display: grid;
+  gap: 0.25rem;
+}
+
+#package-form .pref-grid {
+  margin-bottom: 0;
+  gap: 0.95rem;
+}
+
+#package-form .form-group {
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.2rem;
+}
+
+#package-form .form-label,
+#packager-login-form .form-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 #package-form input.form-select,
 #package-form textarea.ai-prompt-textarea,
 #package-form select.form-select,
@@ -2329,17 +2411,84 @@
   width: 100%;
   box-sizing: border-box;
   color: var(--text-main);
-  background: var(--bg-input);
-  border: 1px solid #B8C5C0;
-  border-radius: var(--radius-sm);
-  padding: 0.7rem 0.8rem;
-  min-height: 2.75rem;
+  background: #ffffff;
+  border: 1px solid #bfd2ca;
+  border-radius: 12px;
+  padding: 0.8rem 0.9rem;
+  min-height: 2.9rem;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02);
 }
+
+#package-form textarea.ai-prompt-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
 #package-form input.form-select:focus,
 #package-form textarea.ai-prompt-textarea:focus,
 #package-form select.form-select:focus,
 #packager-login-form input.form-select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  box-shadow: 0 0 0 3px var(--primary-glow), inset 0 1px 2px rgba(15, 23, 42, 0.02);
 }
-#package-form fieldset.pref-card { border: 1px solid var(--primary-border); }
+
+#package-form fieldset.pref-card,
+#itinerary-fields .pref-card,
+#accommodation-fields .pref-card {
+  background: #ffffff;
+  border: 1px solid #d2e1d9;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: none;
+}
+
+#itinerary-fields > p,
+#accommodation-fields > p {
+  background: #eef8f1;
+  border: 1px dashed #c9dfd3;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  color: var(--text-muted);
+}
+
+#package-form fieldset.pref-card legend {
+  padding: 0 0.4rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+#add-stay {
+  margin-top: 0.25rem;
+  align-self: flex-start;
+}
+
+.google-sign-in-divider {
+  margin: 1rem 0 0.75rem;
+  color: var(--text-subtle);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.google-sign-in-button {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid #B8C5C0;
+  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.google-sign-in-button:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+#form-message,
+#login-message {
+  min-height: 1.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: pre-line;
+  display: block;
+}

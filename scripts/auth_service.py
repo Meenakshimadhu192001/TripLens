@@ -23,6 +23,21 @@ def init_user_table():
         )
     """)
     conn.commit()
+
+    demo_users = [
+        ("traveler@example.com", "pass123", "traveler", None),
+        ("agency@mystikal.com", "packager123", "packager", "Mystikal Holidays"),
+    ]
+
+    for email, password, role, agency_name in demo_users:
+        existing = cursor.execute("SELECT 1 FROM users WHERE email = ?", (email.strip().lower(),)).fetchone()
+        if not existing:
+            cursor.execute(
+                "INSERT INTO users (email, password_hash, role, agency_name) VALUES (?, ?, ?, ?)",
+                (email.strip().lower(), hash_password(password), role, agency_name),
+            )
+
+    conn.commit()
     conn.close()
 
 def hash_password(password: str) -> str:
