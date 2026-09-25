@@ -108,5 +108,3 @@ Kanchana Krishna
 R Anand
 
 Meenakshi Madhu
-
-Abhishek Kumar
